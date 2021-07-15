@@ -1,0 +1,1 @@
+as3compile SDTButtplug.as -T 10 -o SDTButtplug.swf
