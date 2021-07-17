@@ -1,10 +1,11 @@
-SDTButtplug
-
-This mod is made for SuperDeepthroat with it's modloader. Which can be found at: https://www.undertow.club/downloads/sdt-loader.1828/
+SDTButtplug is a mod made for SuperDeepthroat with it's modloader. Which can be found at: https://www.undertow.club/downloads/sdt-loader.1828/
 
 It sends realtime data to supported sex toys using buttplug via intiface. Which can be found at: https://intiface.com/desktop/
 
-Todo's:
+
+
+Todo's: feel free to send a Pull Request!
+
  - Reduce/Fix movement stutter
  - Load the websocket URL via a settings file
  - Vibrate action on cumming
@@ -27,7 +28,7 @@ How to use:
 	 - Add a line to Loader/Mods/CharacterFolders.txt, which reads: SDTButtplug:SDTButtplug
  - Set up SDT as trusted for flash
 	- Go to your AppData folder by hitting WIN+R, type in %appdata%, then press Enter
-	- Nativate to %appdata%\Macromedia\Flash Player\#Security\FlashPlayerTrust\. If the folder don't exist, create them.
+	- Nativate to %appdata%\\Macromedia\\Flash Player\\#Security\FlashPlayerTrust\\. If the folder don't exist, create them.
 	- Create a file named: SDT.cfg
 	- Add the full path to your Loader folder to SDT.cfg, you can do this with notepad. Don't forget to save.
  - Launch

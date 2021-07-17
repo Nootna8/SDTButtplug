@@ -160,7 +160,7 @@ package flash
 				
 				if(response.DeviceList) {
 					devices = response.DeviceList.Devices;
-					log("Device update");
+					loader.updateStatusCol("SDTButtplug: device update", "#00FF00");
 				}
 				
 				if(response.DeviceAdded || response.DeviceRemoved) {
