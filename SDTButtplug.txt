@@ -1,0 +1,9 @@
+socketUrl=ws:--localhost:12345-buttplug
+debug=
+hjTwist=
+updateInterval=50
+minimumMove=0.05
+positionMin=0
+positionMax=1
+vibrationSpeed=0.85
+vibrationDecay=0.7

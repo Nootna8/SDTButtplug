@@ -3,26 +3,56 @@ package flash
 	import flash.display.MovieClip;
 	import flash.system.Security;
 	import flash.utils.getTimer;
+	import flash.utils.Dictionary;
+	import flash.geom.Point;
 	
 	import net.gimite.websocket.*;
 	import com.adobe.serialization.json.*;
 	
+	var settings;
+	
 	var loader;
 	var global;
 	var her;
+	var him;
+	
 	var websocket:WebSocket;
 	var devices:Array = new Array();
+	
 	var lastUpdate = 0;
 	var lastPosition = 0;
+	var lastAngle = 0;
+	var lastVibration = 0;
 	
-	var connected = false;
-	var debug = false;
+	var lastState = {
+		"cum_in_mouth": 0,
+		"cum_in_throat": 0
+	};
+	
+	var lastSpurting = false;
+	var lastFlashing = false;
+	
+	var offsetPos = 0;
+	var offsetUntil = 0;
+	
+	var defaultSettings = {
+		"socketUrl": "ws:--localhost:12345-buttplug",
+		"debug": false,
+		"hjTwist": false,
+		"updateInterval": 0,
+		"minimumMove": 0,
+		"positionMin": 0.1,
+		"positionMax": 0.9,
+		"vibrationSpeed": 0.85,
+		"vibrationDecay": 0.7
+	};
+	
+	var connected:Boolean = false;
 
     public dynamic class ModMain extends MovieClip implements IWebSocketLogger
     {
-	
 		public function log(message:String):void {
-			if(debug) {
+			if(settings['debug']) {
 				loader.updateStatusCol(message, "#0000FF");
 				loader.traceDebug(message);
 			}
@@ -31,7 +61,7 @@ package flash
 		public function error(message:String):void {
 			loader.updateStatusCol("SDTButtplug: " + message, "#FF0000");
 			
-			if(debug) {
+			if(settings['debug']) {
 				loader.traceDebug(message);
 			}
 		}
@@ -42,39 +72,148 @@ package flash
 			loader = l;
 			global = loader.g;
 			her = loader.her;
-		
+			him = global.him;
+			
 			if(Security.sandboxType != Security.LOCAL_TRUSTED) {
-				error("Sandbox is not trusted");
+				failedLoading("Sandbox is not trusted");
 				return;
 			}
-				
-			l.addEnterFramePersist(doUpdate);
-
-			connectIntiface();
+			
+			var modSettingsLoader = loader.eDOM.getDefinition("Modules.modSettingsLoader") as Class;
+			var msl = new modSettingsLoader("SDTButtplug", settingsLoaded);
+			msl.addEventListener("settingsNotFound", settingsNotFound);
+		}
 		
+		function continueLoad()
+		{
+			loader.addEnterFramePersist(doUpdate);
+			connectIntiface();
 			loader.unloadMod();
+		}
+		
+		function failedLoading(message)
+		{
+			error(message);
+			loader.unloadMod();
+		}
+		
+		function settingsNotFound(e)
+		{
+			loader.updateStatusCol("SDTButtplug: settings not found, defaults loaded", "#0000FF");
+			settings = defaultSettings;
+			continueLoad();
+		}
+		
+		function checkSettings()
+		{
+			for (var k in defaultSettings) {
+				if(settings[k] == null) {
+					return false;
+				}
+			}
+			
+			settings['positionMin'] = parseFloat(settings['positionMin']);
+			settings['positionMax'] = parseFloat(settings['positionMax']);
+			settings['vibrationSpeed'] = parseFloat(settings['vibrationSpeed']);
+			settings['vibrationDecay'] = parseFloat(settings['vibrationDecay']);
+			
+			return true;
+		}
+		
+		function settingsLoaded(e)
+		{
+			settings = e.settings;
+			
+			if(checkSettings() != true) {
+				loader.updateStatusCol("SDTButtplug: invalid config, defaults loaded", "#0000FF");
+				settings = defaultSettings;
+			}
+			else {
+				loader.updateStatusCol("SDTButtplug: config file loaded", "#0000FF");
+			}
+			
+			continueLoad();
+		}
+		
+		function mapValue(value, inMin, inMax, outMin, outMax)
+		{
+			return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+		}
+		
+		function detectSpurting(currentTime, pos)
+		{
+			if(currentTime < (offsetUntil + 50)) {
+				return;
+			}
+		
+			for (var k in lastState) {
+				var v = lastState[k];
+				var newv = global.dialogueControl.states[k]._buildLevel;
+				
+				if(newv > v) {
+					if(pos > 0.5) {
+						offsetPos = - 0.2;
+					}
+					else {
+						offsetPos = 0.2;
+					}
+					
+					offsetUntil = currentTime + 100;
+				}
+				
+				lastState[k] = newv;
+			}
+			
+			if(him.spurting) {
+				if(pos > 0.5) {
+					offsetPos = - 0.2;
+				}
+				else {
+					offsetPos = 0.2;
+				}
+				
+				offsetUntil = currentTime + 100;
+			}
+			
+			lastSpurting = him.spurting;
 		}
 		
 		function doUpdate(f)
 		{
-			var pos = 0;
+			var pos:Number = 0;
+			var twist:Number = 0;
+			var currentTime = getTimer();
 			
-			if(her.mouthFull && her.pos > 0) {
-				pos = her.pos;
-				
-				if(pos > 1) {
-					pos = 1;
+			if(global.handJobMode) {
+				if(settings['hjTwist']) {
+					twist = global.currentHandJobPos.x;
+					pos = her.pos;
+				}
+				else {
+					pos = global.currentHandJobPos.x;
 				}
 			}
+			else if(her.pos > 0){
+				pos = her.pos;
+			}
 			
-			sendPosition(1 - pos);
+			detectSpurting(currentTime, pos);
+		
+			if(offsetUntil > currentTime) {
+				pos += offsetPos;
+			}
+			
+			var angle = mapValue(him.penis.rotation, -4, 20, 0, 1);
+			pos = mapValue(pos, 0, 1, settings['positionMax'], settings['positionMin']);
+			
+			sendPosition(pos, angle, twist);
 		}
 		
 		function connectIntiface()
 		{
 			loader.updateStatusCol("SDTButtplug: connecting ...", "#00FF00");
 		
-			var url = "ws://localhost:12345/buttplug";
+			var url = settings["socketUrl"].split("-").join("/");
 	
 			websocket = new WebSocket(
 				"intiface", 
@@ -91,39 +230,91 @@ package flash
 			websocket.addEventListener("message", onSocketEvent);
 		}
 		
-		function sendPosition(position)
+		function clampPosition(val)
+		{
+			if(val < 0) {
+				return 0;
+			}
+			
+			if(val > 1) {
+				return 1;
+			}
+			
+			return val;
+		}
+		
+		function sendPosition(position, angle, twist)
 		{
 			if(!connected)
 			{
 				return;
 			}
 			
-			var timePassed = getTimer() - lastUpdate;
-			if(timePassed < 30) {
-				return;
-			}
-			
+			var currentTime = getTimer();
+			var timePassed = currentTime - lastUpdate;
 			var positionChange = Math.abs(lastPosition - position);
-			if(positionChange < 0.1) {
+			
+			if(timePassed < settings["updateInterval"]) {
 				return;
-			}
+			}			
+			
+				
 		
 			for each (var device in devices)
 			{
-				if(device.DeviceMessages.LinearCmd)
+				var request:Object = [];
+				
+				if(positionChange >= settings["minimumMove"]) {
+					if(device.DeviceMessages.LinearCmd)
+					{
+						var linear = {
+							"LinearCmd": {"Id": 4, "DeviceIndex": device.DeviceIndex, "Vectors": 
+							[ {
+								"Index": 0, "Duration": timePassed, "Position": clampPosition(position)
+							} ]
+							}
+						};
+						
+						if(device.DeviceMessages.LinearCmd.FeatureCount > 12)
+						{
+							linear['LinearCmd']['Vectors'].push({
+								"Index": 10, "Duration": timePassed, "Position": clampPosition(twist)
+							});
+						
+							linear['LinearCmd']['Vectors'].push({
+								"Index": 12, "Duration": timePassed, "Position": clampPosition(angle)
+							});
+						}
+						
+						request.push(linear);
+					}
+				}
+				
+				if(device.DeviceMessages.VibrateCmd)
 				{
-					var request:Object = [ {
-					 "LinearCmd": {"Id": 4, "DeviceIndex": device.DeviceIndex, "Vectors": [ {
-						"Index": 0, "Duration": timePassed, "Position": position
-					 } ]}
-					} ];
-					
+					var vibrate = mapValue(positionChange, 0, 1 - settings['vibrationSpeed'], 0, 1);
+					if(vibrate < lastVibration) {
+						var vibrationDecay = mapValue(timePassed, 0, 200, 0, settings['vibrationDecay']);
+						vibrate = clampPosition(lastVibration - vibrationDecay);
+						lastVibration = vibrate;
+					}
+					lastVibration = vibrate;
+				
+					request.push({
+						"VibrateCmd": {"Id": 5, "DeviceIndex": device.DeviceIndex, "Speeds": [ {
+							"Index": 0, "Speed": vibrate
+						}]}
+					});
+				}
+				
+				if(request.length > 0) {
 					websocket.send(JSON.encode(request));
 				}
 			}
 			
-			lastUpdate = getTimer();
+			lastUpdate = currentTime;
 			lastPosition = position;
+			lastAngle = angle;
 		}
 		
 		public function onSocketEvent(event:WebSocketEvent):void

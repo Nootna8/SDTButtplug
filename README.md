@@ -2,16 +2,9 @@ SDTButtplug is a mod made for SuperDeepthroat with it's modloader. Which can be 
 
 It sends realtime data to supported sex toys using buttplug via intiface. Which can be found at: https://intiface.com/desktop/
 
-
-
 Todo's: feel free to send a Pull Request!
-
- - Reduce/Fix movement stutter
- - Load the websocket URL via a settings file
- - Vibrate action on cumming
- - Support position from animtools. Only the blowjob animation work now
- - Support more buttplug actions. Only linear with 1 axis is supported now
  - Socket reconnecting. Only tries to connect at game start, need to restart if a timeout occurs
+ - OSR2, support is already there on the mod side. The buttplug side is pending ( https://github.com/buttplugio/buttplug/issues/397 )
  
 How to use:
  - Install and start buttplug:
@@ -43,3 +36,8 @@ How to use:
 	- In the top right it should show "SDTButtplug: connected" after a few seconds
 	- Power on your sex toy
 	- Done
+	
+Configuration:
+
+If you want to tweak the configuration, copy SDTButtplug.txt from the repo to Loader/Settings/SDTButtplug.txt. You can edit the file with notepad, then save and restart the game.
+Make sure the game also says: "SDTButtplug: config file loaded".
