@@ -28,7 +28,7 @@ package flash
 		"cum_in_mouth": 0,
 		"cum_in_throat": 0
 	};
-	
+
 	var lastSpurting = false;
 	var lastFlashing = false;
 	
@@ -43,14 +43,19 @@ package flash
 		"minimumMove": 0,
 		"positionMin": 0.1,
 		"positionMax": 0.9,
+		"smoothing": 1.0,
 		"vibrationSpeed": 0.85,
-		"vibrationDecay": 0.7
+		"vibrationDecay": 0.7,
+		"spurtDelay": 100,
+		"spurtIntensity": 0.2,
+		"spurtVariance": 1.0,
+		"reconnectKey": 186 // Semicolon
 	};
 	
 	var connected:Boolean = false;
 
-    public dynamic class ModMain extends MovieClip implements IWebSocketLogger
-    {
+	public dynamic class ModMain extends MovieClip implements IWebSocketLogger
+	{
 		public function log(message:String):void {
 			if(settings['debug']) {
 				loader.updateStatusCol(message, "#0000FF");
@@ -87,6 +92,7 @@ package flash
 		function continueLoad()
 		{
 			loader.addEnterFramePersist(doUpdate);
+			loader.registerFunctionPersist(connectIntiface,settings['reconnectKey']);
 			connectIntiface();
 			loader.unloadMod();
 		}
@@ -116,6 +122,9 @@ package flash
 			settings['positionMax'] = parseFloat(settings['positionMax']);
 			settings['vibrationSpeed'] = parseFloat(settings['vibrationSpeed']);
 			settings['vibrationDecay'] = parseFloat(settings['vibrationDecay']);
+			settings['spurtIntensity'] = parseFloat(settings['spurtIntensity']);
+			settings['spurtDelay'] = parseFloat(settings['spurtDelay']);
+			settings['spurtVariance'] = parseFloat(settings['spurtVariance']);
 			
 			return true;
 		}
@@ -145,20 +154,27 @@ package flash
 			if(currentTime < (offsetUntil + 50)) {
 				return;
 			}
-		
+
+			var spurtIntensity = settings['spurtIntensity'];
+			var spurtVariance = settings['spurtVariance'];
+			var spurtDelay = settings['spurtDelay'];
+
+			var spurtMod = 1.0 - (him.twitchFactor * spurtVariance);
+			var spurtDist = spurtIntensity * spurtMod;
+
 			for (var k in lastState) {
 				var v = lastState[k];
 				var newv = global.dialogueControl.states[k]._buildLevel;
 				
 				if(newv > v) {
 					if(pos > 0.5) {
-						offsetPos = - 0.2;
+						offsetPos = - spurtDist;
 					}
 					else {
-						offsetPos = 0.2;
+						offsetPos = spurtDist;
 					}
 					
-					offsetUntil = currentTime + 100;
+					offsetUntil = currentTime + spurtDelay;
 				}
 				
 				lastState[k] = newv;
@@ -166,13 +182,13 @@ package flash
 			
 			if(him.spurting) {
 				if(pos > 0.5) {
-					offsetPos = - 0.2;
+					offsetPos = - spurtDist;
 				}
 				else {
-					offsetPos = 0.2;
+					offsetPos = spurtDist;
 				}
 				
-				offsetUntil = currentTime + 100;
+				offsetUntil = currentTime + spurtDelay;
 			}
 			
 			lastSpurting = him.spurting;
@@ -193,8 +209,8 @@ package flash
 					pos = global.currentHandJobPos.x;
 				}
 			}
-			else if(her.pos > 0){
-				pos = her.pos;
+			else if(her.isInMouth() && her.penisInMouthDist > 0){
+				pos = her.penisInMouthDist / him.currentPenisLength;
 			}
 			
 			detectSpurting(currentTime, pos);
@@ -205,14 +221,18 @@ package flash
 			
 			var angle = mapValue(him.penis.rotation, -4, 20, 0, 1);
 			pos = mapValue(pos, 0, 1, settings['positionMax'], settings['positionMin']);
-			
+
 			sendPosition(pos, angle, twist);
 		}
 		
 		function connectIntiface()
 		{
 			loader.updateStatusCol("SDTButtplug: connecting ...", "#00FF00");
-		
+
+			if (websocket != null) {
+				websocket.close();
+			}
+
 			var url = settings["socketUrl"].split("-").join("/");
 	
 			websocket = new WebSocket(
@@ -256,21 +276,21 @@ package flash
 			
 			if(timePassed < settings["updateInterval"]) {
 				return;
-			}			
-			
-				
-		
+			}
+
 			for each (var device in devices)
 			{
 				var request:Object = [];
 				
 				if(positionChange >= settings["minimumMove"]) {
+					var dur = Math.round(timePassed * settings['smoothing']);
+
 					if(device.DeviceMessages.LinearCmd)
 					{
 						var linear = {
 							"LinearCmd": {"Id": 4, "DeviceIndex": device.DeviceIndex, "Vectors": 
 							[ {
-								"Index": 0, "Duration": timePassed, "Position": clampPosition(position)
+								"Index": 0, "Duration": dur, "Position": clampPosition(position)
 							} ]
 							}
 						};
@@ -278,11 +298,11 @@ package flash
 						if(device.DeviceMessages.LinearCmd.FeatureCount > 12)
 						{
 							linear['LinearCmd']['Vectors'].push({
-								"Index": 10, "Duration": timePassed, "Position": clampPosition(twist)
+								"Index": 10, "Duration": dur, "Position": clampPosition(twist)
 							});
 						
 							linear['LinearCmd']['Vectors'].push({
-								"Index": 12, "Duration": timePassed, "Position": clampPosition(angle)
+								"Index": 12, "Duration": dur, "Position": clampPosition(angle)
 							});
 						}
 						
