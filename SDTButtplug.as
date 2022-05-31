@@ -29,6 +29,7 @@ package flash
 		"cum_in_throat": 0
 	};
 
+	var tryReconnect = true;
 	var lastSpurting = false;
 	var lastFlashing = false;
 	
@@ -38,17 +39,22 @@ package flash
 	var defaultSettings = {
 		"socketUrl": "ws:--localhost:12345-buttplug",
 		"debug": false,
+
 		"hjTwist": false,
-		"updateInterval": 0,
-		"minimumMove": 0,
+		"updateInterval": 50,
+		"minimumMove": 0.05,
+
 		"positionMin": 0.1,
 		"positionMax": 0.9,
 		"smoothing": 1.0,
+
 		"vibrationSpeed": 0.85,
 		"vibrationDecay": 0.7,
+
 		"spurtDelay": 100,
 		"spurtIntensity": 0.2,
 		"spurtVariance": 1.0,
+
 		"reconnectKey": 186 // Semicolon
 	};
 	
@@ -89,7 +95,7 @@ package flash
 			msl.addEventListener("settingsNotFound", settingsNotFound);
 		}
 		
-		function continueLoad()
+		public function continueLoad()
 		{
 			loader.addEnterFramePersist(doUpdate);
 			loader.registerFunctionPersist(connectIntiface,settings['reconnectKey']);
@@ -97,20 +103,20 @@ package flash
 			loader.unloadMod();
 		}
 		
-		function failedLoading(message)
+		public function failedLoading(message)
 		{
 			error(message);
 			loader.unloadMod();
 		}
 		
-		function settingsNotFound(e)
+		public function settingsNotFound(e)
 		{
 			loader.updateStatusCol("SDTButtplug: settings not found, defaults loaded", "#0000FF");
 			settings = defaultSettings;
 			continueLoad();
 		}
 		
-		function checkSettings()
+		public function checkSettings()
 		{
 			for (var k in defaultSettings) {
 				if(settings[k] == null) {
@@ -129,7 +135,7 @@ package flash
 			return true;
 		}
 		
-		function settingsLoaded(e)
+		public function settingsLoaded(e)
 		{
 			settings = e.settings;
 			
@@ -144,12 +150,12 @@ package flash
 			continueLoad();
 		}
 		
-		function mapValue(value, inMin, inMax, outMin, outMax)
+		public function mapValue(value, inMin, inMax, outMin, outMax)
 		{
 			return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
 		}
 		
-		function detectSpurting(currentTime, pos)
+		public function detectSpurting(currentTime, pos)
 		{
 			if(currentTime < (offsetUntil + 50)) {
 				return;
@@ -194,7 +200,7 @@ package flash
 			lastSpurting = him.spurting;
 		}
 		
-		function doUpdate(f)
+		public function doUpdate(f)
 		{
 			var pos:Number = 0;
 			var twist:Number = 0;
@@ -225,7 +231,7 @@ package flash
 			sendPosition(pos, angle, twist);
 		}
 		
-		function connectIntiface()
+		public function connectIntiface()
 		{
 			loader.updateStatusCol("SDTButtplug: connecting ...", "#00FF00");
 
@@ -250,7 +256,7 @@ package flash
 			websocket.addEventListener("message", onSocketEvent);
 		}
 		
-		function clampPosition(val)
+		public function clampPosition(val)
 		{
 			if(val < 0) {
 				return 0;
@@ -263,7 +269,7 @@ package flash
 			return val;
 		}
 		
-		function sendPosition(position, angle, twist)
+		public function sendPosition(position, angle, twist)
 		{
 			if(!connected)
 			{
@@ -347,8 +353,18 @@ package flash
 			
 			if(event.type == "close")
 			{
-				error("disconnected");
 				connected = false;
+
+				if(tryReconnect)
+				{
+					tryReconnect = false;
+					loader.updateStatusCol("SDTButtplug: reconnecting ...", "#0000FF");
+					connectIntiface();
+				}
+				else
+				{
+					error("Disconnected, reconnectin");
+				}
 			}
 			
 			if(event.type == "message")
@@ -360,6 +376,7 @@ package flash
 				response = response[0];
 				if(response.ServerInfo) {
 					connected = true;
+					tryReconnect = true;
 					
 					loader.updateStatusCol("SDTButtplug: connected", "#00FF00");
 					
