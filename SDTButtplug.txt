@@ -2,12 +2,14 @@ socketUrl=ws:--localhost:12345-buttplug
 debug=
 
 hjTwist=
-updateInterval=50
-minimumMove=0.05
+animTools=
+updateInterval=90
+minimumMove=0.01
 
 positionMin=0.1
 positionMax=0.9
-smoothing=1.0
+smoothing=1.5
+predictive=1
 
 vibrationSpeed=0.85
 vibrationDecay=0.7

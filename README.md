@@ -1,3 +1,5 @@
+# SDTButtplug
+
 SDTButtplug is a mod made for SuperDeepthroat with it's modloader. Which can be found at: https://www.undertow.club/downloads/sdt-loader.1828/
 
 It sends realtime data to supported sex toys using buttplug via intiface. Which can be found at: https://intiface.com/desktop/
@@ -6,7 +8,7 @@ Todo's: feel free to send a Pull Request!
  - Socket reconnecting. Only tries to connect at game start, need to restart if a timeout occurs
  - OSR2, support is already there on the mod side. The buttplug side is pending ( https://github.com/buttplugio/buttplug/issues/397 )
  
-How to use:
+# How to use:
  - Install and start buttplug:
 	- Download and install intiface: https://intiface.com/desktop/
 	- Open intiface, go to the Server Status tab and click START SERVER
@@ -37,7 +39,36 @@ How to use:
 	- Power on your sex toy
 	- Done
 	
-Configuration:
+You can press ';' to reconnect
+
+If the mod doesn't load anything (Screen says Loading Finished without any mention of SDTButtplug). Try making a fresh .swf, this is done by deleting SDTButtplug.swf and running Compile.bat, the newly generated SDTButtplug.swf might work better.
+It's a stupid fix which shouldn't change anything, but for some people it seems to fix the problem. Flash right ...
+
+# Configuration:
 
 If you want to tweak the configuration, copy SDTButtplug.txt from the repo to Loader/Settings/SDTButtplug.txt. You can edit the file with notepad, then save and restart the game.
 Make sure the game also says: "SDTButtplug: config file loaded".
+
+Depending on your device/setup you might want to edit the config for a better response.
+
+Too much stuttering (For example with a Vorze A10 Piston)
+```
+updateInterval=150
+minimumMove=0.05
+smoothing=2
+```
+
+Not responsive enough (For example with an OSR2 / SR6)
+```
+updateInterval=0
+minimumMove=0.005
+smoothing=1
+predictive=
+```
+
+Other animations not working
+```
+animTools=1
+```
+
+Edit these to your liking and let us know when you've found the Golden settings for a specific device!

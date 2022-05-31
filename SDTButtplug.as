@@ -29,7 +29,7 @@ package flash
 		"cum_in_throat": 0
 	};
 
-	var tryReconnect = true;
+	var tryReconnect = false;
 	var lastSpurting = false;
 	var lastFlashing = false;
 	
@@ -41,12 +41,14 @@ package flash
 		"debug": false,
 
 		"hjTwist": false,
-		"updateInterval": 50,
-		"minimumMove": 0.05,
+		"animTools": false,
+		"updateInterval": 90,
+		"minimumMove": 0.01,
 
 		"positionMin": 0.1,
 		"positionMax": 0.9,
-		"smoothing": 1.0,
+		"smoothing": 1.5,
+		"predictive": true,
 
 		"vibrationSpeed": 0.85,
 		"vibrationDecay": 0.7,
@@ -215,7 +217,10 @@ package flash
 					pos = global.currentHandJobPos.x;
 				}
 			}
-			else if(her.isInMouth() && her.penisInMouthDist > 0){
+			else if(settings['animTools']) {
+				pos = her.pos;
+			}
+			else if(her.isInMouth() && her.penisInMouthDist > 0) {
 				pos = her.penisInMouthDist / him.currentPenisLength;
 			}
 			
@@ -284,6 +289,12 @@ package flash
 				return;
 			}
 
+			var sendPosition = clampPosition(position);
+
+			if(settings["predictive"]) {
+				sendPosition = clampPosition(position - (lastPosition - position));
+			}
+
 			for each (var device in devices)
 			{
 				var request:Object = [];
@@ -296,7 +307,7 @@ package flash
 						var linear = {
 							"LinearCmd": {"Id": 4, "DeviceIndex": device.DeviceIndex, "Vectors": 
 							[ {
-								"Index": 0, "Duration": dur, "Position": clampPosition(position)
+								"Index": 0, "Duration": dur, "Position": sendPosition
 							} ]
 							}
 						};
